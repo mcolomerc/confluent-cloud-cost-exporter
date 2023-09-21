@@ -1,0 +1,24 @@
+modules:
+  default: 
+    metrics:
+      - name: confluent_cloud_cost
+        type: object
+        help: Confluent Cloud Resource costs
+        path: '{.data[*]}'
+        labels:
+          id: '{.resource.id}'
+          resource: '{.resource.display_name}'
+          environment: '{.resource.environment.id}'
+          unit: '{.unit}'
+          product: '{.product}'
+          start: '{.start_date}' 
+          end_date: '{.end_date}' 
+          granularity: '{.granularity}'  
+          discount: '{.discount_amount}'
+          price: '{.price}'
+          original_amount: '{.original_amount}'
+          quantity: '{.quantity}'
+        values:
+          amount: '{.amount}'  
+ 
+ 

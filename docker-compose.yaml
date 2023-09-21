@@ -1,0 +1,39 @@
+version: '3.9'
+services:
+  json_exporter:
+    image: confluent/prometheus/json_exporter
+    build:
+      context: json_exporter
+      dockerfile: ./Dockerfile
+    container_name: json_exporter
+    environment:
+    - USER=<CONFLUENT_CLOUD_API_KEY>
+    - PASS=<CONFLUENT_CLOUD_API_SECRET>
+    volumes:
+      - ./prom-json-exporter/config.yml:/config.yml:ro
+    ports:
+      - 7979:7979
+  prometheus:
+    image: prom/prometheus
+    hostname: prometheus
+    container_name: prometheus
+    ports:
+    - 9090:9090
+    restart: always
+    volumes:
+    - ./prometheus/:/etc/prometheus/
+  grafana:
+    image: grafana/grafana:8.1.3
+    hostname: grafana
+    container_name: grafana
+    environment:
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SECURITY_ADMIN_USER: "admin"  
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+    - 3000:3000
+    volumes:
+    - ./grafana/provisioning/:/etc/grafana/provisioning/
+    depends_on:
+    - prometheus
