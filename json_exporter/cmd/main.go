@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
@@ -32,6 +34,9 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
+
+	cache "github.com/victorspringer/http-cache"
+	"github.com/victorspringer/http-cache/adapter/memory"
 )
 
 var (
@@ -73,10 +78,32 @@ func Run() {
 		os.Exit(0)
 	}
 
+	memcached, err := memory.NewAdapter(
+		memory.AdapterWithAlgorithm(memory.LRU),
+		memory.AdapterWithCapacity(10000000),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	minutes, _ := strconv.Atoi(os.Getenv("CACHE_MINUTES"))
+	cacheMinutes := time.Duration(minutes) * time.Minute
+	cacheClient, err := cache.NewClient(
+		cache.ClientWithAdapter(memcached),
+		cache.ClientWithTTL(cacheMinutes),
+		cache.ClientWithRefreshKey("opn"),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	http.Handle(*metricsPath, promhttp.Handler())
-	http.HandleFunc("/probe", func(w http.ResponseWriter, req *http.Request) {
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		probeHandler(w, req, logger, config)
 	})
+	http.Handle("/probe", cacheClient.Middleware(handlerFunc))
+
 	if *metricsPath != "/" && *metricsPath != "" {
 		landingConfig := web.LandingConfig{
 			Name:        "JSON Exporter",

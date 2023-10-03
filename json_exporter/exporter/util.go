@@ -164,6 +164,7 @@ func NewJSONFetcher(ctx context.Context, logger log.Logger, m config.Module, tpl
 }
 
 func (f *JSONFetcher) FetchJSON(endpoint string) ([]byte, error) {
+
 	httpClientConfig := f.module.HTTPClientConfig
 	client, err := pconfig.NewClientFromConfig(httpClientConfig, "fetch_json", pconfig.WithKeepAlivesDisabled(), pconfig.WithHTTP2Disabled())
 	if err != nil {
