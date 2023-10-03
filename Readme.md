@@ -90,6 +90,9 @@ JSON Exporter builds the Request to Confluent Cloud API and builds the response 
   
   * user=`CCLOUD_API_KEY`
   * pass=`CCLOUD_API_SECRET`
+  
+* Cache
+  * CACHE_MINUTES=100
 
 Metric definition: `.prom-json-exporter/config.yml`
 
@@ -158,3 +161,69 @@ Open `localhost:9090` and check the targets.
 * [ ] Grafana. Add more Panels to the dashboards
 * [ ] Combine Metrics and Costs in the same dashboard  
 * [ ] Alerting
+
+
+
+sum by(kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"})
+
+sum(confluent_cloud_cost_amount{id=~"$Kafka",environment=~"$Environment"})
+
+join(
+  sum by (kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"})
+  sum by (kafka_cluster) (kafka_cluster_price),
+  ["kafka_cluster"]
+) * 0.01
+
+sum by (kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"}) + on (kafka_id) sum by (id)(confluent_cloud_cost_amount{id=~""lkc-q8dr5m",environment=~"env-zmz2zd"})
+
+
+  sum by (kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"}) + on (instance,name) sum by (instance,name) (windows_service_start_mode{start_mode="auto"} == 1)
+
+
+  sum(node_disk_bytes_read * on(instance) group_left(node_name) node_meta{}) by (node_name)
+
+  sum by(kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"}) * on (kafka_id) sum by (id)(confluent_cloud_cost_amount{id=~"lkc-q8dr5m",environment=~"env-zmz2zd"})
+
+  sum(label_replace(
+    node_systemd_unit_state{instance="server-01",job="node-exporters",name="kubelet.service",state="active"},
+    "unit_name","$1","name", "(.+)"
+    )
+)by(unit_name)
+
+  - module: http
+    metricsets:
+      - json
+    period: 60s
+    hosts: ["api.confluent.cloud"]
+    namespace: "json_namespace"
+    path: "/billing/v1/costs?start_date=2023-09-01&end_date=2023-09-30"
+    username: "HE5P5PRAMML3HVTW"
+    password: "l1FE+CpfyWgV5QGM4olu6NSme0xrvABC7yMBTAeafftEOQ1eLiObb2yQeAGZo3Ua"
+
+    curl -v  -G --data-urlencode 'match[]={__name__=~".+"}' http://localhost:9090/federate
+
+      curl -v  -G --data-urlencode 'match[]={__name__=~"confluent_.+"}' http://localhost:9090/federate
+
+
+       #  - module: prometheus
+  #  period: 60s
+ #   metricsets: ["collector"]
+  #  hosts: ["prometheus:9090"]
+   # honor_labels: true
+   # metrics_path: '/federate' 
+   # params:
+    #  'match[]':
+     #   - '{__name__=~".+"}'
+
+
+curl -X PUT "localhost:9200/.ds-metricbeat-8.8.0-2023.10.03-000001?pretty" -H 'Content-Type: application/json' -d'
+{
+  "mappings": {
+    "properties": {
+      "http.confluent.cost.data.quantity": {
+        "type": "float"
+      }
+    }
+  }
+}
+'
