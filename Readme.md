@@ -1,40 +1,41 @@
-# Confluent Cloud Metrics and Costs - Prometheus + Grafana
+# Confluent Cloud Cost as Metrics
 
-* [Prometheus](https://prometheus.io/) is an open-source systems monitoring and alerting toolkit
-* [Grafana](https://grafana.com/) is an open-source platform for monitoring and observability
-* [Confluent Cloud Metrics API](https://docs.confluent.io/cloud/current/metrics-api.html) provides metrics for Confluent Cloud resources
-* [Confluent Cloud Costs API](https://docs.confluent.io/cloud/current/billing/overview.html) provides costs for Confluent Cloud resources
+This project integrates Confluent Cloud Cost information as another Confluent cloud metric to help on data aggregation related to service usage or cost breakdowns.
 
-## Build params with prometheus target labels
+* [Confluent Cloud Metrics API](https://docs.confluent.io/cloud/current/metrics-api.html) provides metrics for Confluent Cloud resources, supports [Prometheus](https://prometheus.io) `export` and filtering by `resource`.
 
-* Cost data can take up to 72 hours to become available
+* [Confluent Cloud Costs API](https://docs.confluent.io/cloud/current/billing/overview.html) provides costs for Confluent Cloud resources.
+
+[Confluent Costs API considerations](https://docs.confluent.io/cloud/current/billing/overview.html#retrieve-costs-for-a-range-of-dates):
+
+* Cost data can take up to *72* hours to become available
 * Start date can reach a maximum of one year into the past
-* One month is the maximum window between start and end dates
-* Period - Current Month  
+* One month is the maximum window between start and end dates.
+  
+**Confluent Cloud cost exporter** is a web server that exposes the Confluent Cloud Costs API as Prometheus metrics or JSON Metrics for Metricbeat.
+Confluent Cloud costs exporter uses an internal cache to reduce the number of requests to Confluent Cloud API, cache expiration configuration needs to be used to define the request frequency to Confluent Cost API, bigger cache expiration time means less external calls. Prometheus works better with `scrape_interval` congigured with less than `5m`, but the cost data do not change so frequently, the costs exporters use the cache to serve data to Prometheus or Metricbeat. On the other side, the JSON exporter helps on data types normalization, avoiding the `Try to convert long to float` Elasticsearch error when tried to use Metricbeat HTTP module with Confluent Cloud API endpoint.  
+A given period is required for building the query to the Cost API endpoint, the exporter is using the current Month to build the period(current month start date and current month end date define the period).  
 
-From: [Confluent Costs API](https://docs.confluent.io/cloud/current/billing/overview.html#retrieve-costs-for-a-range-of-dates)
+## Source
 
-## Prometheus
+`./confluent_cost_exporter` [Readme.md](confluent_cost_exporter/README.md)
+
+## Configuration
+
+### Environment variables
+
+* `CCLOUD_API_KEY` - Confluent Cloud API Key
+* `CCLOUD_API_SECRET` - Confluent Cloud API Secret
+* `CACHE_EXPIRATION` - Cache time Duration. Default: `30m`
+
+## Prometheus & Grafana
 
 Prometheus interval is set to `5m` and timeout to `30s`. More than a `5m` interval is not recommended for Prometheus.
 
-```yaml
-- job_name: json_exporter
-    scrape_interval: 5m
-    scrape_timeout: 30s
-    honor_labels: true
-    ... 
-```
-
-### Scrape Targets
-
-* Confluent Cloud Metrics API
-
-Based on [JSON Exporter](https://github.com/prometheus-community/json_exporter)
+`prometheus.yml` file is configured to scrape metrics from Confluent Cloud Metrics API and from Confluent Cloud Cost exporter.
 
 ```yaml
-scrape_configs:
-  - job_name: Confluent Cloud
+ - job_name: Confluent Cloud
     scrape_interval: 1m
     scrape_timeout: 1m
     honor_timestamps: true
@@ -43,187 +44,159 @@ scrape_configs:
         - api.telemetry.confluent.cloud
     scheme: https
     basic_auth:
-      username: <CONFLUENT_CLOUD_API_KEY>
-      password: <CONFLUENT_CLOUD_API_SECRET>
+      username: <CONFLUENT_API_KEY>
+      password: <CONFLUENT_API_SECRET>
     metrics_path: /v2/metrics/cloud/export
     params:
       resource.kafka.id:
-        - <CLUSTER_ID>
+        - lkc-<id>
+      resource.schema_registry.id:
+        - lsrc-<id>
 ```
 
-* Confluent Cloud Costs API
+Getting Confluent cloud cost as Prometheus Metric, `confluent_cloud_cost_amount` with labels:
+
+Example:
+
+```txt
+# HELP confluent_cloud_cost_amount Confluent Cloud Resource costs
+# TYPE confluent_cloud_cost_amount untyped
+confluent_cloud_cost_amount{discount="0",end_date="2023-10-02",environment="env-xxxxxx",granularity="DAILY",id="lkc-xxxxxx",original_amount="0",price="0.0001326",product="KAFKA",quantity="2.6151538e-05",resource="connect",start="2023-10-01",unit="GB-hour"} 0
+confluent_cloud_cost_amount{discount="0",end_date="2023-10-02",environment="env-xxxxxx",granularity="DAILY",id="lkc-xxxxxx",original_amount="3.1368",price="0.00484",product="KAFKA",quantity="648",resource="connect",start="2023-10-01",unit="Partition-hour"} 3.1368
+```
+
+Prometheus Job:
 
 ```yaml
-- job_name: json_exporter
+  - job_name: confluent_cost_exporter
     scrape_interval: 5m
     scrape_timeout: 30s
     honor_labels: true 
     metrics_path: /probe  
     static_configs:
-      - targets: 
-        - https://api.confluent.cloud/billing/v1/costs
-           
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target 
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: json_exporter:7979     
+      - targets: ['confluent_cost_exporter:7979'] 
 ```
 
-## JSON Prometheus Exporter
+### Targets
 
-Based on [JSON Exporter](https://github.com/prometheus-community/json_exporter). 
+Validate Targets are up.
 
-Patches:
+Open `http://localhost:9090/targets?search=`
 
-* https://github.com/prometheus-community/json_exporter/issues/148
+### Grafana datasource
+
+Provisioned datasource: (`./grafana/datasources/datasource.yml`)
+
+### Dashboards
+
+Open `http://localhost:3000` and login as admin.
+
+Provisioned dashboards: (`./grafana/dashboards`)
+
+* Confluent Cloud.
   
-* Request parameters `start_date` and `end_date` are calculated based on the current month
-
-JSON Exporter builds the Request to Confluent Cloud API and builds the response in Prometheus format.
-
-* Period - Current Month (calculates current month, start and end dates, to build the request parameters `start_date` and `end_date`)
+* Confluent Cloud Cost.  
   
-* Manages the authentication with Confluent Cloud API, it requires the following environment variables:
+<img src="./docs/Grafana.png" width="480">
+
+## Metricbeat and Elasticsearch
+
+MetricBeat and Elasticsearch: It is possible to use *Metribeat HTTP module* to get the data from Confluent Cloud Costs API, but it requires to manage type conversions defining an Elasticsearch index template.
+
+**Issue**: Metricbeat HTTP module. `Try to convert long to float`.
+
+* Metricbeat will try to insert into Elasticsearch `quantity: 20` as long.
   
-  * user=`CCLOUD_API_KEY`
-  * pass=`CCLOUD_API_SECRET`
+* Metricbeat will try to insert into Elasticsearch `quantity: 10.4` as float.
   
-* Cache
-  * CACHE_MINUTES=100
+Confluent Cloud Cost exporter will convert the `quantity` to float, forcing the `quantity` to be a float number always serialized with dot `.` as decimal separator.
 
-Metric definition: `.prom-json-exporter/config.yml`
+`mtericbeat.yml` file is configured to collect metrics from Confluent Cloud Metrics API and send them to Elasticsearch.
 
-```yaml
- metrics:
-      - name: confluent_cloud_cost
-        type: object
-        help: Confluent Cloud Resource costs
-        path: '{.data[*]}'
-        labels:
-          id: '{.resource.id}'
-          resource: '{.resource.display_name}'
-          environment: '{.resource.environment.id}'
-          unit: '{.unit}'
-          product: '{.product}'
-          start: '{.start_date}' 
-          end_date: '{.end_date}' 
-          granularity: '{.granularity}'  
-          discount: '{.discount_amount}'
-          price: '{.price}'
-          original_amount: '{.original_amount}'
-          quantity: '{.quantity}'
-        values:
-          amount: '{.amount}'  
-``` 
+Confluet Cloud Metrics:
 
-* Prometheus query example:
-
-`sum(confluent_cloud_cost_amount)`or `sum(confluent_cloud_cost_amount{id=~"lksqlc.*"})`
-
-### Build the JSON Prometheus Exporter
-  
-```bash
-  docker-compose build
+```yml
+metricbeat.modules:
+ - module: prometheus
+    period: 900s 
+    hosts: ['https://api.telemetry.confluent.cloud/v2/metrics/cloud/export?resource.kafka.id=lkc-q8dr5m&resource.kafka.id=lkc-12771v&resource.schema_registry.id=lsrc-nvmj2d']
+    fields_under_root: true
+    username: <CONFLUENT_CLOUD_API_KEY>
+    password: <CONFLUENT_CLOUD_API_SECRET>
 ```
+
+Confluent Cloud Cost as Metricbeat metric.
+
+```yml
+metricbeat.modules:
+  #------------------------- Confluent Cloud Cost Collector Module --------------------- 
+  - module: http
+    period: 5m 
+    metricsets:
+     - json
+    hosts: ['http://confluent_cost_exporter:7979']
+    namespace: "confluent"
+    path: "/json" 
+    method: "GET"
+    json.is_array: true
+```
+
+<img src="./docs/metricbeat.png" width="20">
+
+### Dashboards
+
+Import Kibana dashboards:
+
+* Confluent Cloud Metrics & Costs: `confluent_cloud_metrics_costs.ndjson`
+
+TODO: Auto-provision Kinana dashboards.
+
+<img src="./docs/kibana.png" width="400">
 
 ## Run
 
 Define required environment variables at `docker-compose.yaml` file.
 
-```bash
-  docker-compose up -d
+Confluent Cloud Cost exporter:
+
+```yml
+environment:
+    - CONFLUENT_CLOUD_API_KEY=<CONFLUENT_CLOUD_API_KEY>
+    - CONFLUENT_CLOUD_API_SECRET=<CONFLUENT_CLOUD_API_SECRET>
+    - CACHE_EXPIRATION=240m
 ```
 
-### Grafana
+## Prometheus & Grafana
 
-Open `localhost:3000` and login with `admin:admin`
+1) Copy or rename `docker-compose-pg.yaml` to `docker-compose.yml` to start Prometheus, Grafana and the Confluent Cost exporter.
 
-Provisioned dashboards:
+2) Edit `docker-compose.yml` and fill the required environment variables.
 
-* Confluent Cloud metrics
-* Confluent Cloud costs
+3) Create a `env` folder, compose file will mount `env` folder for managing services configuration:
 
-![alt text](./docs/Grafana.png) 
+4) Create `env/prometheus.yml` for Prometheus jobs configuration. (use `prometheus/prometheus-template.yml` as reference)  
+  
+5) Build: `docker-compose build`
 
-### Prometheus
+6) Up: `docker-compose up -d`
 
-Open `localhost:9090` and check the targets.
+## Metricbeat & Elasticsearch
 
+1) Copy `docker-compose-elk.yaml` to `docker-compose.yml` to start Elasticsearch, Kibana, Metricbeat and the Confluent Cost exporter.
+
+2) Edit `docker-compose.yml` and fill the required environment variables.
+
+3) Create a `env` folder, compose file will mount `env` folder for managing services configuration:
+
+4) Create `env/metricbeat.yml` for Prometheus jobs configuration. (use `metricbeat/metricbeat-template.yml` as reference)  
+
+5) Build: `docker-compose build`
+
+6) Up: `docker-compose up -d`
+  
 ## TODOs
 
-* [X] JSON Exporter. Map Confluent Cloud Cloud Cost API response to Prometheus format
-* [X] JSON Exporter. Add authentication to Confluent Cloud API
-* [X] JSON Exporter. Add start_date and end_date parameters to Confluent Cloud API request
-* [ ] JSON Exporter. Reduce the number of request to Confluent Cloud API to get the Costs data.  
 * [ ] Grafana. Add more Panels to the dashboards
-* [ ] Combine Metrics and Costs in the same dashboard  
+* [ ] Grafana. Combine Metrics and Costs in the same dashboard  
+* [ ] Auto-provision Kinana dashboards. 
 * [ ] Alerting
-
-
-
-sum by(kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"})
-
-sum(confluent_cloud_cost_amount{id=~"$Kafka",environment=~"$Environment"})
-
-join(
-  sum by (kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"})
-  sum by (kafka_cluster) (kafka_cluster_price),
-  ["kafka_cluster"]
-) * 0.01
-
-sum by (kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"}) + on (kafka_id) sum by (id)(confluent_cloud_cost_amount{id=~""lkc-q8dr5m",environment=~"env-zmz2zd"})
-
-
-  sum by (kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"}) + on (instance,name) sum by (instance,name) (windows_service_start_mode{start_mode="auto"} == 1)
-
-
-  sum(node_disk_bytes_read * on(instance) group_left(node_name) node_meta{}) by (node_name)
-
-  sum by(kafka_id, topic)(confluent_kafka_server_retained_bytes{kafka_id=~"lkc-q8dr5m"}) * on (kafka_id) sum by (id)(confluent_cloud_cost_amount{id=~"lkc-q8dr5m",environment=~"env-zmz2zd"})
-
-  sum(label_replace(
-    node_systemd_unit_state{instance="server-01",job="node-exporters",name="kubelet.service",state="active"},
-    "unit_name","$1","name", "(.+)"
-    )
-)by(unit_name)
-
-  - module: http
-    metricsets:
-      - json
-    period: 60s
-    hosts: ["api.confluent.cloud"]
-    namespace: "json_namespace"
-    path: "/billing/v1/costs?start_date=2023-09-01&end_date=2023-09-30"
-    username: "HE5P5PRAMML3HVTW"
-    password: "l1FE+CpfyWgV5QGM4olu6NSme0xrvABC7yMBTAeafftEOQ1eLiObb2yQeAGZo3Ua"
-
-    curl -v  -G --data-urlencode 'match[]={__name__=~".+"}' http://localhost:9090/federate
-
-      curl -v  -G --data-urlencode 'match[]={__name__=~"confluent_.+"}' http://localhost:9090/federate
-
-
-       #  - module: prometheus
-  #  period: 60s
- #   metricsets: ["collector"]
-  #  hosts: ["prometheus:9090"]
-   # honor_labels: true
-   # metrics_path: '/federate' 
-   # params:
-    #  'match[]':
-     #   - '{__name__=~".+"}'
-
-
-curl -X PUT "localhost:9200/.ds-metricbeat-8.8.0-2023.10.03-000001?pretty" -H 'Content-Type: application/json' -d'
-{
-  "mappings": {
-    "properties": {
-      "http.confluent.cost.data.quantity": {
-        "type": "float"
-      }
-    }
-  }
-}
-'

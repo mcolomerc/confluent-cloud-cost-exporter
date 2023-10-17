@@ -1,0 +1,49 @@
+---
+metricbeat.max_start_delay: 30s
+
+metricbeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: true
+  reload.period: 10s
+
+metricbeat.modules: 
+  - module: prometheus
+    period: 900s 
+    hosts: ['https://api.telemetry.confluent.cloud/v2/metrics/cloud/export?resource.kafka.id=lkc-<id>&resource.kafka.id=lkc-<id>v&resource.schema_registry.id=lsrc-<id>']
+    fields_under_root: true
+    username: <CONFLUENT_CLOUD_API_KEY>
+    password: <CONFLUENT_CLOUD_API_SECRET>
+    #------------------------- Confluent Cloud Cost Collector Module --------------------- 
+  - module: http
+    period: 5m 
+    metricsets:
+     - json
+    hosts: ['http://confluent_cost_exporter:7979']
+    namespace: "confluent"
+    path: "/json" 
+    method: "GET"
+    json.is_array: true 
+#----------------------- Elasticsearch output -------------------------
+output.elasticsearch:
+  username: "metricbeat_anonymous_user"
+  #password: ""
+  hosts: ["http://elasticsearch:9200"] 
+
+processors:
+  - add_id: ~
+ 
+setup.kibana:
+  host: "http://kibana:5601"
+
+#----------------------------- Dashboards -----------------------------
+# Control loading the sample dashboards to the Kibana index or not.
+setup.dashboards:
+  enabled: true
+
+logging.level: info
+logging.to_files: false
+logging.to_syslog: false
+logging.files:
+  keepfiles: 3
+  permissions: 0644
+ 

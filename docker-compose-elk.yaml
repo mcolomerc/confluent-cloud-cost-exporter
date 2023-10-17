@@ -33,7 +33,7 @@ services:
     depends_on:
       - elasticsearch
       - kibana
-
+  
   confluent_cost_exporter:
     image: confluent/confluent_cost_exporter
     build:
@@ -47,5 +47,4 @@ services:
     - PORT=7979 
     ports:
       - 7979:7979
-
-   
+ 
