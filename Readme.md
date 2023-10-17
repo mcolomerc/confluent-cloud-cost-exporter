@@ -141,7 +141,7 @@ metricbeat.modules:
     json.is_array: true
 ```
 
-<img src="./docs/metricbeat.png" width="20">
+<img src="./docs/metricbeat.png" width="200">
 
 ### Dashboards
 
@@ -151,7 +151,7 @@ Import Kibana dashboards:
 
 TODO: Auto-provision Kinana dashboards.
 
-<img src="./docs/kibana.png" width="400">
+<img src="./docs/kibana.png" width="600">
 
 ## Run
 
@@ -166,7 +166,7 @@ environment:
     - CACHE_EXPIRATION=240m
 ```
 
-## Prometheus & Grafana
+### Prometheus & Grafana
 
 1) Copy or rename `docker-compose-pg.yaml` to `docker-compose.yml` to start Prometheus, Grafana and the Confluent Cost exporter.
 
@@ -180,7 +180,7 @@ environment:
 
 6) Up: `docker-compose up -d`
 
-## Metricbeat & Elasticsearch
+### Metricbeat & Elasticsearch
 
 1) Copy `docker-compose-elk.yaml` to `docker-compose.yml` to start Elasticsearch, Kibana, Metricbeat and the Confluent Cost exporter.
 
