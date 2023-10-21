@@ -1,4 +1,4 @@
-# Confluent Cloud Cost as Metrics
+# Confluent Cloud Cost Exporter
 
 This project integrates Confluent Cloud Cost information as another Confluent cloud metric to help on data aggregation related to service usage or cost breakdowns.
 
@@ -12,23 +12,41 @@ This project integrates Confluent Cloud Cost information as another Confluent cl
 * Start date can reach a maximum of one year into the past
 * One month is the maximum window between start and end dates.
   
-**Confluent Cloud cost exporter** is a web server that exposes the Confluent Cloud Costs API as Prometheus metrics or JSON Metrics for Metricbeat.
+**Confluent Cloud cost exporter** is a web server that exposes the Confluent Cloud Costs API as Prometheus metrics or JSON Metrics for Metricbeat. 
 Confluent Cloud costs exporter uses an internal cache to reduce the number of requests to Confluent Cloud API, cache expiration configuration needs to be used to define the request frequency to Confluent Cost API, bigger cache expiration time means less external calls. Prometheus works better with `scrape_interval` congigured with less than `5m`, but the cost data do not change so frequently, the costs exporters use the cache to serve data to Prometheus or Metricbeat. On the other side, the JSON exporter helps on data types normalization, avoiding the `Try to convert long to float` Elasticsearch error when tried to use Metricbeat HTTP module with Confluent Cloud API endpoint.  
-A given period is required for building the query to the Cost API endpoint, the exporter is using the current Month to build the period(current month start date and current month end date define the period).  
+A given period is required for building the query to the Cost API endpoint, the exporter is using the current Month to build the period(current month start date and current month end date define the period). Additionally, Confluent Cloud cost exporter can be configured to act as a CRON job to push costs to a given target. 
+
+Supported CRON targets:
+
+* Confluent Cloud Kafka Topic with AVRO.
 
 ## Source
 
 `./confluent_cost_exporter` [Readme.md](confluent_cost_exporter/README.md)
 
-## Configuration
+Needs Confluent Cloud credentials to retrieve costs. Service account must be a member of the *OrganizationAdmin* role.
 
-### Environment variables
+[More information](https://docs.confluent.io/cloud/current/billing/overview.html#retrieve-costs-for-a-range-of-dates)
 
-* `CCLOUD_API_KEY` - Confluent Cloud API Key
-* `CCLOUD_API_SECRET` - Confluent Cloud API Secret
-* `CACHE_EXPIRATION` - Cache time Duration. Default: `30m`
+Environment variables:
 
-## Prometheus & Grafana
+* `CONFLUENT_CLOUD_API_KEY` - Confluent Cloud API Key
+* `CONFLUENT_CLOUD_API_SECRET` - Confluent Cloud API Secret
+
+## Exporters
+
+### Web exporter
+
+Default exporter is the web exporter, it will expose cost information in the following endpoints:
+
+* `/probe`: Confluent Cloud Cost as [prometheus](https://prometheus.io/)
+* `/json`: Confluent Cloud Cost as [json](https://www.json.org/json-en.html)
+
+Configure cache expiration. Default: `30m`
+
+* `CACHE_EXPIRATION` - Cache expiration time. Default: `30m`  
+
+#### Prometheus & Grafana
 
 Prometheus interval is set to `5m` and timeout to `30s`. More than a `5m` interval is not recommended for Prometheus.
 
@@ -77,17 +95,17 @@ Prometheus Job:
       - targets: ['confluent_cost_exporter:7979'] 
 ```
 
-### Targets
+##### Targets
 
 Validate Targets are up.
 
 Open `http://localhost:9090/targets?search=`
 
-### Grafana datasource
+##### Grafana datasource
 
 Provisioned datasource: (`./grafana/datasources/datasource.yml`)
 
-### Dashboards
+##### Dashboards
 
 Open `http://localhost:3000` and login as admin.
 
@@ -99,7 +117,7 @@ Provisioned dashboards: (`./grafana/dashboards`)
   
 <img src="./docs/Grafana.png" width="480">
 
-## Metricbeat and Elasticsearch
+#### Metricbeat and Elasticsearch
 
 MetricBeat and Elasticsearch: It is possible to use *Metribeat HTTP module* to get the data from Confluent Cloud Costs API, but it requires to manage type conversions defining an Elasticsearch index template.
 
@@ -143,7 +161,7 @@ metricbeat.modules:
 
 <img src="./docs/metricbeat.png" width="200">
 
-### Dashboards
+##### Dashboards
 
 Import Kibana dashboards:
 
@@ -153,7 +171,7 @@ TODO: Auto-provision Kinana dashboards.
 
 <img src="./docs/kibana.png" width="600">
 
-## Run
+#### Run
 
 Define required environment variables at `docker-compose.yaml` file.
 
@@ -166,7 +184,7 @@ environment:
     - CACHE_EXPIRATION=240m
 ```
 
-### Prometheus & Grafana
+#### Prometheus & Grafana
 
 1) Copy or rename `docker-compose-pg.yaml` to `docker-compose.yml` to start Prometheus, Grafana and the Confluent Cost exporter.
 
@@ -180,7 +198,7 @@ environment:
 
 6) Up: `docker-compose up -d`
 
-### Metricbeat & Elasticsearch
+#### Metricbeat & Elasticsearch
 
 1) Copy `docker-compose-elk.yaml` to `docker-compose.yml` to start Elasticsearch, Kibana, Metricbeat and the Confluent Cost exporter.
 
@@ -193,10 +211,63 @@ environment:
 5) Build: `docker-compose build`
 
 6) Up: `docker-compose up -d`
+
+## CRON Exporters
+
+Enabling CRON exporters will run the exporters as CRON jobs, web exporters configuration will be ignored.
+
+### Cron Job configuration
+
+Environment variable:
+
+* **`CRON_EXPRESSION`**=<CRON_EXPRESSION>
+  
+### Target: Confluent Cloud Kafka Topic
+
+Environment variables:
+
+* **`BOOTSTRAP`**=<CONFLUENT_CLOUD_BOOTSTRAP_SERVER>
+* **`CONFLUENT_CLOUD_API_KEY`**=<CONFLUENT_CLOUD_API_KEY>
+* **`CONFLUENT_CLOUD_API_SECRET`**=<CONFLUENT_CLOUD_API_SECRET>
+* **`TOPIC`**=<TOPIC_NAME>
+* **`SCHEMA_REGISTRY_ENDPOINT`**=<SCHEMA_REGISTRY_ENDPOINT>
+* **`SCHEMA_REGISTRY_API_KEY`**=<SCHEMA_REGISTRY_API_KEY>
+* **`SCHEMA_REGISTRY_API_SECRET`**=<SCHEMA_REGISTRY_API_SECRET>
+
+Using a configuration file:
+
+```yaml
+credentials: 
+  key: <CONFLUENT_CLOUD_API_KEY>
+  secret: <CONFLUENT_CLOUD_API_SECRET>
+cron:
+  expression: "<CRON_EXPRESSION>" 
+  target:
+    kafka:
+      bootstrap: <BOOTSTRAP_SERVER>
+      credentials: 
+        key: <CONFLUENT_CLOUD_KAFKA_API_KEY>
+        secret: <CONFLUENT_CLOUD_KAFKA_API_SECRET>
+      schemaRegistry:
+        endpoint: <SCHEMA_REGISTRY_ENDPOINT>
+        credentials:
+          key: <SCHEMA_REGISTRY_API_KEY>
+          secret: <SCHEMA_REGISTRY_API_SECRET>
+      topic: <TOPIC_NAME>
+```
+
+#### Docker
+
+Using a configuration file:
+
+```sh
+docker run -p 7979:7979 -v <path/to/config.yml>:/bin/config.yml confluent/confluent_cloud_cost_exporter 
+```
   
 ## TODOs
 
 * [ ] Grafana. Add more Panels to the dashboards
 * [ ] Grafana. Combine Metrics and Costs in the same dashboard  
-* [ ] Auto-provision Kinana dashboards. 
+* [ ] Auto-provision Kinana dashboards.
 * [ ] Alerting
+* [ ] Exporters

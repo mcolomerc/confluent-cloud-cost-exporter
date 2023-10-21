@@ -14,6 +14,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/mcolomerc/confluent_cost_exporter/config"
@@ -21,8 +22,13 @@ import (
 )
 
 func main() {
+	// Flags
+	// Read config file path from CLI arguments
+	configFile := flag.String("config", "./config.yml", "Path to config file")
+	flag.Parse()
+
 	// Configuration
-	cfg, err := config.NewConfig()
+	cfg, err := config.NewConfig(*configFile)
 	if err != nil {
 		log.Fatalf("Config error: %s", err)
 	}
