@@ -18,26 +18,45 @@ type App struct {
 
 // Run creates objects via constructors.
 func Run(cfg *config.Config) {
+	log.Println("Running Confluent Cost exporter enabled")
 	// http client
 	client := client.NewHttpClient(cfg.Credentials)
 	// controller service
 	costsService := services.NewCostService(client, cfg)
 
-	var allExporters map[config.Format]exporters.Exporter = make(map[config.Format]exporters.Exporter)
-	// exporters
-	allExporters[config.PROMETHEUS] = exporters.NewPromExporter(cfg.PromConfig)
-	allExporters[config.JSON] = exporters.NewJSONExporter(*cfg)
-	// controller
-	controller := controller.NewExportController(costsService, allExporters)
-	// router
-	router := router.Router{
-		ExportController: *controller,
+	// Push exporters (cron jobs)
+	log.Println(cfg.Cron.Expression)
+	if cfg.Cron.Expression != "" {
+		log.Println("Kafka exporter enabled")
+		kafkaExporter, err := exporters.NewKafkaExporter(costsService, *cfg)
+		if err != nil {
+			log.Println("Error creating kafka exporter")
+			return
+		}
+		log.Printf("Kafka exporter created - Cron: %v", cfg.Cron.Expression)
+		done := make(chan bool)
+		err = kafkaExporter.ExportCosts(done) //CRON Job
+		if err != nil {
+			log.Printf("Error %s", "error running kafka exporter")
+			return
+		}
+	} else {
+		// web exporters
+		var webExporters map[config.Exporter]exporters.Exporter = make(map[config.Exporter]exporters.Exporter)
+		// exporters
+		webExporters[config.PROMETHEUS] = exporters.NewPromExporter(cfg.Web.PromConfig)
+		webExporters[config.JSON] = exporters.NewJSONExporter(*cfg)
+		// controller
+		controller := controller.NewExportController(costsService, webExporters)
+		// router
+		router := router.Router{
+			ExportController: *controller,
+		}
+		log.Printf("Cache expiration : %v", cfg.Web.Cache.Expiration)
+		//setup routes
+		r := router.SetupRouter(cfg.Web.Cache.Expiration)
+
+		// running
+		r.Run()
 	}
-	log.Printf("Cache expiration : %v", cfg.Cache.Expiration)
-	//setup routes
-	r := router.SetupRouter(cfg.Cache.Expiration)
-
-	// running
-	r.Run()
-
 }

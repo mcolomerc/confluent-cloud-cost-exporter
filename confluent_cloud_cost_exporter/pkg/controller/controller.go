@@ -14,17 +14,17 @@ import (
 
 type ExportController struct {
 	CostsService *services.CostService
-	Exporters    map[config.Format]exporters.Exporter
+	Exporters    map[config.Exporter]exporters.Exporter
 }
 
-func NewExportController(costsService *services.CostService, exporters map[config.Format]exporters.Exporter) *ExportController {
+func NewExportController(costsService *services.CostService, exporters map[config.Exporter]exporters.Exporter) *ExportController {
 	return &ExportController{
 		CostsService: costsService,
 		Exporters:    exporters,
 	}
 }
 
-func (controller *ExportController) Export(format config.Format) gin.HandlerFunc {
+func (controller *ExportController) Export(format config.Exporter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer timer("Export")()
 		response, err := controller.CostsService.GetCosts()

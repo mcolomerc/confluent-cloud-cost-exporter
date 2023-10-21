@@ -26,7 +26,6 @@ type Cost struct { // This is the struct that will hold the data from the API
 	StartDate         string   `json:"start_date" mapstructure:"start_date"`
 	Unit              string   `json:"unit" mapstructure:"unit"`
 	Resource          `json:"resource"  mapstructure:"resource"`
-	Month             int `json:"month" mapstructure:"month"`
 }
 
 type Resource struct {

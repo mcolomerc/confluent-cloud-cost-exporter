@@ -11,8 +11,11 @@ COPY go.* ./
 RUN go mod download 
 # Copy local code to the container image.
 COPY . ./ 
-# Build the binary.
-RUN make build
+
+# Build the binary. 
+ENV GIN_MODE=release
+ENV PORT=7979
+RUN go build -v -o confluent_cost_exporter
 
 # Use the official Debian slim image for a lean production container.
 # https://hub.docker.com/_/debian
@@ -26,8 +29,9 @@ RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -
 
 # Copy the binary to the production image from the builder stage. 
 COPY --from=builder /app/confluent_cost_exporter /bin/confluent_cost_exporter
-COPY --from=builder /app/config.yml /config.yml
-
+COPY --from=builder /app/config.yml /bin/config.yml
+ENV GIN_MODE=release
+ENV PORT=7979
 EXPOSE      7979
 USER        nobody
-ENTRYPOINT  [ "/bin/confluent_cost_exporter" ]
+ENTRYPOINT  [ "/bin/confluent_cost_exporter", "--config", "/bin/config.yml" ]

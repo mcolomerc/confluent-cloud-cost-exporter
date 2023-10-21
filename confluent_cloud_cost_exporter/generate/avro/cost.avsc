@@ -1,0 +1,84 @@
+{
+    "type": "record",
+    "name": "Cost",
+    "fields": [
+        {
+            "name": "amount",
+            "type": "double"
+        },
+        {
+            "name": "discount_amount",
+            "type": "double"
+        },
+        {
+            "name": "end_date",
+            "type": "string"
+        },
+        {
+            "name": "granularity",
+            "type": "string"
+        },
+        {
+            "name": "line_type",
+            "type": "string"
+        },
+        {
+            "name": "network_access_type",
+            "type": "string"
+        },
+        {
+            "name": "original_amount",
+            "type": "double"
+        },
+        {
+            "name": "price",
+            "type": "double"
+        },
+        {
+            "name": "product",
+            "type": "string"
+        },
+        {
+            "name": "quantity",
+            "type": "double"
+        },
+        {
+            "name": "start_date",
+            "type": "string"
+        },
+        {
+            "name": "unit",
+            "type": "string"
+        },
+        {
+            "name": "resource",
+            "type": {
+                "type": "record",
+                "name": "resource",
+                "fields": [
+                    {
+                        "name": "display_name",
+                        "type": "string"
+                    },
+                    {
+                        "name": "id",
+                        "type": "string"
+                    },
+                    {
+                        "name": "environment",
+                        "type": {
+                            "type": "record",
+                            "name": "environment",
+                            "fields": [
+                                {
+                                    "name": "id",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
