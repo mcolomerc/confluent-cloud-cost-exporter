@@ -1,6 +1,7 @@
 # Confluent Cloud Cost Exporter
 
-This project integrates Confluent Cloud Cost information as another Confluent cloud metric to help on data aggregation related to service usage or cost breakdowns.
+This project integrates Confluent Cloud Cost information with third parties to help on data aggregation related to service usage or cost breakdowns.
+It can work as a Service exposing cost information as another Confluent Cloud metric so it can be integrated with Prometheus and Grafana or as a CRON job that pushes cost information to a given target.
 
 * [Confluent Cloud Metrics API](https://docs.confluent.io/cloud/current/metrics-api.html) provides metrics for Confluent Cloud resources, supports [Prometheus](https://prometheus.io) `export` and filtering by `resource`.
 
@@ -12,13 +13,18 @@ This project integrates Confluent Cloud Cost information as another Confluent cl
 * Start date can reach a maximum of one year into the past
 * One month is the maximum window between start and end dates.
   
-**Confluent Cloud cost exporter** is a web server that exposes the Confluent Cloud Costs API as Prometheus metrics or JSON Metrics for Metricbeat. 
-Confluent Cloud costs exporter uses an internal cache to reduce the number of requests to Confluent Cloud API, cache expiration configuration needs to be used to define the request frequency to Confluent Cost API, bigger cache expiration time means less external calls. Prometheus works better with `scrape_interval` congigured with less than `5m`, but the cost data do not change so frequently, the costs exporters use the cache to serve data to Prometheus or Metricbeat. On the other side, the JSON exporter helps on data types normalization, avoiding the `Try to convert long to float` Elasticsearch error when tried to use Metricbeat HTTP module with Confluent Cloud API endpoint.  
-A given period is required for building the query to the Cost API endpoint, the exporter is using the current Month to build the period(current month start date and current month end date define the period). Additionally, Confluent Cloud cost exporter can be configured to act as a CRON job to push costs to a given target. 
+**Confluent Cloud cost exporter** is a GIN server that exposes the Confluent Cloud Costs API as Prometheus metrics or JSON Metrics for Metricbeat.
+Confluent Cloud costs exporter uses an internal in memory cache to reduce the number of requests to Confluent Cloud Cost API, cache expiration configuration needs to be used to define the request frequency to Confluent Cost API, bigger cache expiration time means less external calls. For example, Prometheus works better with `scrape_interval` congigured with less than `5m`, but the cost data do not change so frequently, the costs exporters use the cache to serve data to Prometheus or Metricbeat.
+
+On the other side, the JSON exporter helps on data types normalization, avoiding the `Try to convert long to float` Elasticsearch error when tried to use Metricbeat HTTP module with [Confluent Cloud Costs API](https://docs.confluent.io/cloud/current/billing/overview.html) endpoint.  
+
+A given period is required for building the query to the Cost API endpoint, the exporter is using the current Month to build the period(current month start date and current month end date define the period).
+
+Additionally, Confluent Cloud cost exporter can be configured to act as a CRON job to push costs to a given target. 
 
 Supported CRON targets:
 
-* Confluent Cloud Kafka Topic with AVRO.
+* Confluent Cloud Kafka Topic (AVRO schema).
 
 ## Source
 
