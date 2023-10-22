@@ -3,6 +3,8 @@
 This project integrates Confluent Cloud Cost information with third parties to help on data aggregation related to service usage or cost breakdowns.
 It can work as a Service exposing cost information as another Confluent Cloud metric so it can be integrated with Prometheus and Grafana or as a CRON job that pushes cost information to a given target.
 
+<img src="./docs/arch.png" width="480">
+
 * [Confluent Cloud Metrics API](https://docs.confluent.io/cloud/current/metrics-api.html) provides metrics for Confluent Cloud resources, supports [Prometheus](https://prometheus.io) `export` and filtering by `resource`.
 
 * [Confluent Cloud Costs API](https://docs.confluent.io/cloud/current/billing/overview.html) provides costs for Confluent Cloud resources.
