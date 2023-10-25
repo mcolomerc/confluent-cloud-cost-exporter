@@ -146,6 +146,7 @@ func transformCosts(in services.Cost) (model.Cost, error) {
 	environment.Id = in.Resource.Environment.ID
 	resource.Environment = environment
 	resource.Id = in.Resource.ID
+	out.Resource = resource
 	return out, nil
 }
 
