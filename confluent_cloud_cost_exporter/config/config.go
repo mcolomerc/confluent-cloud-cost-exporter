@@ -87,6 +87,7 @@ func NewConfig(configPath string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("config error: %w", err)
 	}
+	fmt.Println("Using Confluent Cloud Key: " + cfg.Credentials.Key)
 
 	err = cleanenv.ReadEnv(cfg)
 	if err != nil {
