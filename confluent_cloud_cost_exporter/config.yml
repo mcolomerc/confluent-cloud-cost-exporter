@@ -20,6 +20,8 @@ web:
               environment: '{.resource.environment.id}'
               unit: '{.unit}'
               product: '{.product}'
+              line_type: '{.line_type}'  
+              network_access_type: '{.network_access_type}'  
               start: '{.start_date}' 
               end_date: '{.end_date}' 
               granularity: '{.granularity}'  
