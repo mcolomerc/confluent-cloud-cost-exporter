@@ -149,7 +149,7 @@ go run main.go -config=<path/to/config.yml>
 Build:
 
 ```sh
-docker build -t confluent/confluent_cloud_cost_exporter .
+docker build -t mcolomerc/confluent_cloud_cost_exporter .
 ```
 
 **Run**
@@ -162,7 +162,7 @@ Web exporters:
 docker run -p 7979:7979 \ 
 --env CONFLUENT_CLOUD_API_KEY='<CONFLUENT_CLOUD_API_KEY>' \
 --env CONFLUENT_CLOUD_API_SECRET='<CONFLUENT_CLOUD_API_SECRET>' \
-confluent/confluent_cloud_cost_exporter 
+mcolomerc/confluent_cloud_cost_exporter 
 ```
 
 Using a configuration file:

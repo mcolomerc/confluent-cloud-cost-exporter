@@ -49,8 +49,8 @@ type Endpoints struct {
 
 // Credentials -.
 type Credentials struct {
-	Key    string `env-required:"true" yaml:"key" env:"CONFLUENT_CLOUD_API_KEY"`
-	Secret string `env-required:"true" yaml:"secret" env:"CONFLUENT_CLOUD_API_SECRET"`
+	Key    string `yaml:"key" env:"CONFLUENT_CLOUD_API_KEY"`
+	Secret string `yaml:"secret" env:"CONFLUENT_CLOUD_API_SECRET"`
 }
 
 // Kafka Config -.
