@@ -1,5 +1,23 @@
 # Confluent Cloud Cost Exporter
 
+Confluent Cloud Cost Exporter is a tool that retrieves billing information from Confluent Cloud and serves it to different targets.
+
+Endpoints:
+
+* Prometheus endpoint: `/probe`
+* JSON endpoint: `/json`
+
+Confluent Cloud Billing API exposes the billing information for the resources used in the Confluent Cloud environment. The exporter retrieves this information and serves it to different targets.
+
+Confluent Costs API considerations:
+
+* Cost data can take up to 72 hours to become available
+* Start date can reach a maximum of one year into the past
+* One month is the maximum window between start and end dates.
+
+[Confluent Cloud Billing API](https://docs.confluent.io/cloud/current/billing-api/index.html)
+
+
 ## Configuration
 
 The exporter is configured via a YAML file, by default located at `./config.yml`.
@@ -128,6 +146,23 @@ or setting environment variables:
 * **SCHEMA_REGISTRY_API_KEY**=<SCHEMA_REGISTRY_API_KEY>
 * **SCHEMA_REGISTRY_API_SECRET**=<SCHEMA_REGISTRY_API_SECRET>
 
+
+## Changelog
+
+`v0.0.1`
+By default, the exporter will work getting data from the current month.
+
+`v0.0.4`
+By default, the exporter will work getting data *from three days ago* for only *one day*.
+
+Adds configuration:
+
+```yaml
+period:
+  daysAgo: 3
+  window: 1
+```
+
 ## Development
 
 ### Run locally
@@ -168,7 +203,7 @@ mcolomerc/confluent_cloud_cost_exporter
 Using a configuration file:
 
 ```sh
-docker run -p 7979:7979 -v <path/to/config.yml>:/bin/config.yml confluent/confluent_cloud_cost_exporter 
+docker run -p 7979:7979 -v <path/to/config.yml>:/bin/config.yml mcolomerc/confluent_cloud_cost_exporter 
 ```
 
 Test endpoint:
@@ -177,6 +212,6 @@ Test endpoint:
 curl http://localhost:7979/json
 ```
 
-### AVRO
+### AVRO Schema for the Kafka producer
 
 `go generate github.com/mcolomerc/confluent_cost_exporter/generate`

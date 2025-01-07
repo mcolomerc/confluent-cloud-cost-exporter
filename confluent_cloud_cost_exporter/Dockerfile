@@ -1,4 +1,4 @@
-FROM golang:1.22-bookworm as builder
+FROM golang:1.22 as builder
 
 # Create and change to the app directory.
 WORKDIR /app
@@ -14,7 +14,7 @@ COPY ./ ./
 # Build the binary. 
 ENV GIN_MODE=release
 
-ENV PORT=7979
+ENV PORT=7979  
 
 RUN CGO_ENABLED=1 go build -v -o confluent_cost_exporter
 

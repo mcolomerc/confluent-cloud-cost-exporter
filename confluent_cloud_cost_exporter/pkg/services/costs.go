@@ -58,16 +58,19 @@ func NewCostService(client *client.HttpClient, config *config.Config) *CostServi
 		Config: config,
 	}
 }
+
+/*
+Cost data can take up to 72 hours to become available
+Start date can reach a maximum of one year into the past
+One month is the maximum window between start and end dates
+Period - Window size: 1 day - 3 days ago from today - if today is 2024-12-19 then the period is 2024-12-15 to 2024-12-16
+*/
 func (e *CostService) GetCosts() ([]Cost, error) {
 	endpoint := e.Config.Endpoints.CostsUrl
 	baseURL, _ := url.Parse(endpoint)
 	params := url.Values{}
-	// Cost data can take up to 72 hours to become available
-	// Start date can reach a maximum of one year into the past
-	// One month is the maximum window between start and end dates
-	// Period - Current month
-	_, currentMonth, _ := time.Now().Date()
-	startDate, endDate := getDates(int(currentMonth))
+
+	startDate, endDate := getDatesFromInterval(e.Config.Period.DaysAgo, e.Config.Period.Window)
 	params.Add("end_date", endDate)
 	params.Add("start_date", startDate)
 	baseURL.RawQuery = params.Encode()
@@ -90,15 +93,19 @@ func (e *CostService) GetCosts() ([]Cost, error) {
 	return costs, nil
 }
 
-func getDates(month int) (string, string) {
-	currentMonth := time.Month(month)
+func getDatesFromInterval(daysAgo int, wSize int) (string, string) {
 	now := time.Now()
-	currentYear, _, _ := now.Date()
+
 	currentLocation := now.Location()
 
-	firstOfMonth := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, currentLocation)
-	lastOfMonth := firstOfMonth.AddDate(0, 1, -1)
-	return firstOfMonth.Format("2006-01-02"), lastOfMonth.Format("2006-01-02")
+	// Calculate the end date (daysAgo days before today)
+	endDate := now.AddDate(0, 0, -daysAgo).In(currentLocation)
+
+	// Calculate the start date (daysAgo + interval days before today)
+	startDate := endDate.AddDate(0, 0, -wSize).In(currentLocation)
+
+	// Format the dates as strings
+	return startDate.Format("2006-01-02"), endDate.Format("2006-01-02")
 }
 
 func timer(name string) func() {
