@@ -20,7 +20,13 @@ Confluent Cloud costs exporter uses an internal in memory cache to reduce the nu
 
 On the other side, the JSON exporter helps on data types normalization, avoiding the `Try to convert long to float` Elasticsearch error when tried to use Metricbeat HTTP module with [Confluent Cloud Costs API](https://docs.confluent.io/cloud/current/billing/overview.html) endpoint.  
 
-A given period is required for building the query to the Cost API endpoint, the exporter is using the current Month to build the period(current month start date and current month end date define the period).
+A given period is required for building the query to the Cost API endpoint, the exporter by default will work getting data *from three days ago* for only *one day*.
+
+```yaml
+period:
+  daysAgo: 3
+  window: 1
+```
 
 Additionally, Confluent Cloud cost exporter can be configured to act as a CRON job to push costs to a given target. 
 

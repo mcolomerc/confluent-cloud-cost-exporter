@@ -152,7 +152,7 @@ or setting environment variables:
 `v0.0.1`
 By default, the exporter will work getting data from the current month.
 
-`v0.0.4`
+`v0.0.6`
 By default, the exporter will work getting data *from three days ago* for only *one day*.
 
 Adds configuration:
