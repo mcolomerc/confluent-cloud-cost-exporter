@@ -28,6 +28,4 @@ jobs:
         context: confluent_cloud_cost_exporter
         file: confluent_cloud_cost_exporter/Dockerfile
         push: true
-        tags: |
-          ${{ secrets.DOCKER_USERNAME }}/mcolomerc/confluent_cloud_cost_exporter:latest
-          ${{ secrets.DOCKER_USERNAME }}/mcolomerc/confluent_cloud_cost_exporter:${{ github.ref_name }}
+        tags: mcolomerc/confluent_cloud_cost_exporter:latest,mcolomerc/confluent_cloud_cost_exporter:${{ github.ref_name }}
