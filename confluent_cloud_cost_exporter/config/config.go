@@ -11,8 +11,14 @@ import (
 type Config struct {
 	Endpoints   `yaml:"endpoints"`
 	Credentials `yaml:"credentials"`
+	Period      `yaml:"period"`
 	Cron        Cron `yaml:"cron,omitempty" omitempty:"true"`
 	Web         Web  `yaml:"web,omitempty" omitempty:"true"`
+}
+
+type Period struct {
+	DaysAgo int `yaml:"daysAgo,omitempty" env:"DAYS_AGO" env-default:"3"`
+	Window  int `yaml:"window,omitempty" env:"WINDOW" env-default:"1"`
 }
 
 type Cron struct {

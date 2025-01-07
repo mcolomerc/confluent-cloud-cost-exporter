@@ -3,6 +3,9 @@ endpoints:
 credentials: 
   key: <CONFLUENT_CLOUD_API_KEY>
   secret: <CONFLUENT_CLOUD_API_SECRET>
+period:
+  daysAgo: 3
+  window: 1
 web:
   cache:
     expiration: 240m
