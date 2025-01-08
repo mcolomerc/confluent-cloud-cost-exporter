@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mcolomerc/confluent_cost_exporter/config"
+	"github.com/mcolomerc/confluent_cost_exporter/pkg/cache"
 	"github.com/mcolomerc/confluent_cost_exporter/pkg/client"
 	"github.com/mitchellh/mapstructure"
 )
@@ -39,8 +40,9 @@ type Environment struct {
 }
 
 type CostService struct {
-	Client *client.HttpClient
-	Config *config.Config
+	Client   *client.HttpClient
+	Config   *config.Config
+	CacheTTL *cache.TTLCache[string, []Cost]
 }
 
 type KeepZero float64
@@ -53,9 +55,11 @@ func (f KeepZero) MarshalJSON() ([]byte, error) {
 }
 
 func NewCostService(client *client.HttpClient, config *config.Config) *CostService {
+
 	return &CostService{
-		Client: client,
-		Config: config,
+		Client:   client,
+		Config:   config,
+		CacheTTL: cache.NewTTL[string, []Cost](),
 	}
 }
 
@@ -74,6 +78,13 @@ func (e *CostService) GetCosts() ([]Cost, error) {
 	params.Add("end_date", endDate)
 	params.Add("start_date", startDate)
 	baseURL.RawQuery = params.Encode()
+
+	fromCache, found := e.getFromCache(baseURL.String())
+	if found {
+		log.Println("Get from cache")
+		return fromCache, nil
+	}
+	log.Println("Request data from Confluent Cloud API")
 	response, err := e.Client.GetData(baseURL.String())
 	if err != nil {
 		log.Println("Error:", err)
@@ -89,8 +100,19 @@ func (e *CostService) GetCosts() ([]Cost, error) {
 
 		costs = append(costs, result)
 	}
+
+	e.CacheTTL.Set(baseURL.String(), costs, e.Config.Web.Expiration)
+
 	defer timer("Build Cost from Confluent Cloud API")()
 	return costs, nil
+}
+
+func (e *CostService) getFromCache(key string) ([]Cost, bool) {
+	costs, found := e.CacheTTL.Get(key)
+	if found {
+		return costs, true
+	}
+	return nil, false
 }
 
 func getDatesFromInterval(daysAgo int, wSize int) (string, string) {
